@@ -44,34 +44,67 @@ echo_green() {
 export ACSH_VERSION=0.5.0
 
 typeset -A _autocomplete_modellist
-# OpenAI models
-_autocomplete_modellist['openai:	gpt-4o']='{ "completion_cost":0.0000100, "prompt_cost":0.00000250, "endpoint": "https://api.openai.com/v1/chat/completions", "model": "gpt-4o", "provider": "openai" }'
-_autocomplete_modellist['openai:	gpt-4o-mini']='{ "completion_cost":0.0000060, "prompt_cost":0.00000015, "endpoint": "https://api.openai.com/v1/chat/completions", "model": "gpt-4o-mini", "provider": "openai" }'
-_autocomplete_modellist['openai:	o1']='{ "completion_cost":0.0000600, "prompt_cost":0.00001500, "endpoint": "https://api.openai.com/v1/chat/completions", "model": "o1", "provider": "openai" }'
-_autocomplete_modellist['openai:	o1-mini']='{ "completion_cost":0.0000440, "prompt_cost":0.00001100, "endpoint": "https://api.openai.com/v1/chat/completions", "model": "o1-mini", "provider": "openai" }'
-_autocomplete_modellist['openai:	o3-mini']='{ "completion_cost":0.0000440, "prompt_cost":0.00001100, "endpoint": "https://api.openai.com/v1/chat/completions", "model": "o3-mini", "provider": "openai" }'
-# Anthropic models
-_autocomplete_modellist['anthropic:	claude-3-7-sonnet-20250219']='{ "completion_cost":0.0000150, "prompt_cost":0.0000030, "endpoint": "https://api.anthropic.com/v1/messages", "model": "claude-3-7-sonnet-20240219", "provider": "anthropic" }'
-_autocomplete_modellist['anthropic:	claude-3-5-sonnet-20241022']='{ "completion_cost":0.0000150, "prompt_cost":0.0000030, "endpoint": "https://api.anthropic.com/v1/messages", "model": "claude-3-5-sonnet-20241022", "provider": "anthropic" }'
-_autocomplete_modellist['anthropic:	claude-3-5-haiku-20241022']='{ "completion_cost":0.0000040, "prompt_cost":0.0000008, "endpoint": "https://api.anthropic.com/v1/messages", "model": "claude-3-5-haiku-20241022", "provider": "anthropic" }'
-# Groq models
-_autocomplete_modellist['groq:		llama3-8b-8192']='{ "completion_cost":0.0000000, "prompt_cost":0.0000000, "endpoint": "https://api.groq.com/openai/v1/chat/completions", "model": "llama3-8b-8192", "provider": "groq" }'
-_autocomplete_modellist['groq:		llama3-70b-8192']='{ "completion_cost":0.0000000, "prompt_cost":0.0000000, "endpoint": "https://api.groq.com/openai/v1/chat/completions", "model": "llama3-70b-8192", "provider": "groq" }'
-_autocomplete_modellist['groq:		llama-3.3-70b-versatile']='{ "completion_cost":0.0000000, "prompt_cost":0.0000000, "endpoint": "https://api.groq.com/openai/v1/chat/completions", "model": "llama-3.3-70b-versatile", "provider": "groq" }'
-_autocomplete_modellist['groq:		llama-3.1-8b-instant']='{ "completion_cost":0.0000000, "prompt_cost":0.0000000, "endpoint": "https://api.groq.com/openai/v1/chat/completions", "model": "llama-3.1-8b-instant", "provider": "groq" }'
-_autocomplete_modellist['groq:		llama-guard-3-8b']='{ "completion_cost":0.0000000, "prompt_cost":0.0000000, "endpoint": "https://api.groq.com/openai/v1/chat/completions", "model": "llama-guard-3-8b", "provider": "groq" }'
-_autocomplete_modellist['groq:		mixtral-8x7b-32768']='{ "completion_cost":0.0000000, "prompt_cost":0.0000000, "endpoint": "https://api.groq.com/openai/v1/chat/completions", "model": "mixtral-8x7b-32768", "provider": "groq" }'
-_autocomplete_modellist['groq:		gemma2-9b-it']='{ "completion_cost":0.0000000, "prompt_cost":0.0000000, "endpoint": "https://api.groq.com/openai/v1/chat/completions", "model": "gemma2-9b-it", "provider": "groq" }'
-# Groq preview models
-_autocomplete_modellist['groq:		mistral-saba-24b']='{ "completion_cost":0.0000000, "prompt_cost":0.0000000, "endpoint": "https://api.groq.com/openai/v1/chat/completions", "model": "mistral-saba-24b", "provider": "groq" }'
-_autocomplete_modellist['groq:		qwen-2.5-coder-32b']='{ "completion_cost":0.0000000, "prompt_cost":0.0000000, "endpoint": "https://api.groq.com/openai/v1/chat/completions", "model": "qwen-2.5-coder-32b", "provider": "groq" }'
-_autocomplete_modellist['groq:		deepseek-r1-distill-qwen-32b']='{ "completion_cost":0.0000000, "prompt_cost":0.0000000, "endpoint": "https://api.groq.com/openai/v1/chat/completions", "model": "deepseek-r1-distill-qwen-32b", "provider": "groq" }'
-_autocomplete_modellist['groq:		deepseek-r1-distill-llama-70b-specdec']='{ "completion_cost":0.0000000, "prompt_cost":0.0000000, "endpoint": "https://api.groq.com/openai/v1/chat/completions", "model": "deepseek-r1-distill-llama-70b-specdec", "provider": "groq" }'
-_autocomplete_modellist['groq:		llama-3.3-70b-specdec']='{ "completion_cost":0.0000000, "prompt_cost":0.0000000, "endpoint": "https://api.groq.com/openai/v1/chat/completions", "model": "llama-3.3-70b-specdec", "provider": "groq" }'
-_autocomplete_modellist['groq:		llama-3.2-1b-preview']='{ "completion_cost":0.0000000, "prompt_cost":0.0000000, "endpoint": "https://api.groq.com/openai/v1/chat/completions", "model": "llama-3.2-1b-preview", "provider": "groq" }'
-_autocomplete_modellist['groq:		llama-3.2-3b-preview']='{ "completion_cost":0.0000000, "prompt_cost":0.0000000, "endpoint": "https://api.groq.com/openai/v1/chat/completions", "model": "llama-3.2-3b-preview", "provider": "groq" }'
-# Ollama model
-_autocomplete_modellist['ollama:	codellama']='{ "completion_cost":0.0000000, "prompt_cost":0.0000000, "endpoint": "http://localhost:11434/api/chat", "model": "codellama", "provider": "ollama" }'
+typeset -a _autocomplete_model_keys  # Array to preserve order
+typeset -g _autocomplete_models_loaded=0
+
+# Load models from JSON file (lazy loading)
+_load_models_from_json() {
+    # Check if already loaded
+    if [[ $_autocomplete_models_loaded -eq 1 ]]; then
+        return 0
+    fi
+    
+    local models_file="$HOME/.autocomplete/models.json"
+    if [[ ! -f "$models_file" ]]; then
+        echo_error "Models file not found: $models_file" >&2
+        return 1
+    fi
+    
+    # Clear existing models
+    _autocomplete_modellist=()
+    _autocomplete_model_keys=()
+    
+    # Read and parse the JSON file more efficiently
+    local models_json
+    models_json=$(cat "$models_file" 2>/dev/null)
+    
+    # Parse all models at once using jq
+    local parsed_models
+    parsed_models=$(echo "$models_json" | jq -r '.models[] | "\(.provider)|\(.model)|\(.endpoint)|\(.prompt_cost)|\(.completion_cost)"' 2>/dev/null)
+    
+    # Process each model
+    # Ensure trace is off during array operations
+    { set +x; set +v; } 2>/dev/null
+    while IFS='|' read -r provider model endpoint prompt_cost completion_cost; do
+        # Skip if essential fields are missing
+        if [[ -z "$provider" || -z "$model" || -z "$endpoint" ]]; then
+            continue
+        fi
+        
+        # Format the key with appropriate spacing
+        local key
+        if [[ "$provider" == "groq" ]]; then
+            key=$(printf "%s:\t\t%s" "$provider" "$model")
+        else
+            key=$(printf "%s:\t%s" "$provider" "$model")
+        fi
+        
+        # Create the value JSON inline
+        local value="{ \"model\": \"$model\", \"provider\": \"$provider\", \"endpoint\": \"$endpoint\", \"prompt_cost\": $prompt_cost, \"completion_cost\": $completion_cost }"
+        
+        # Store in the associative array
+        # Use unquoted key to avoid zsh's auto-quoting behavior
+        _autocomplete_modellist[$key]="$value"
+        
+        # Also store the key in order array
+        _autocomplete_model_keys+=("$key")
+    done <<< "$parsed_models"
+    
+    # Mark as loaded
+    _autocomplete_models_loaded=1
+}
+
+# Don't load models on initialization - wait until needed
 
 ###############################################################################
 #                       System Information Functions                          #
@@ -239,19 +272,34 @@ build_common_payload() {
     
     # Build JSON using the temp files
     local result
-    result=$(jq -n \
-        --arg model "$model" \
-        --arg temperature "$temperature" \
-        --rawfile system_prompt "$tmp_dir/system.txt" \
-        --rawfile prompt_content "$tmp_dir/prompt.txt" \
-        '{
-           model: $model,
-           messages: [
-             {role: "system", content: $system_prompt},
-             {role: "user", content: $prompt_content}
-           ],
-           temperature: ($temperature | tonumber)
-        }' 2>&1)
+    # Check if using o3/o1 models that don't support temperature
+    if [[ "$model" =~ ^(o3|o1) ]]; then
+        result=$(jq -n \
+            --arg model "$model" \
+            --rawfile system_prompt "$tmp_dir/system.txt" \
+            --rawfile prompt_content "$tmp_dir/prompt.txt" \
+            '{
+               model: $model,
+               messages: [
+                 {role: "system", content: $system_prompt},
+                 {role: "user", content: $prompt_content}
+               ]
+            }' 2>&1)
+    else
+        result=$(jq -n \
+            --arg model "$model" \
+            --arg temperature "$temperature" \
+            --rawfile system_prompt "$tmp_dir/system.txt" \
+            --rawfile prompt_content "$tmp_dir/prompt.txt" \
+            '{
+               model: $model,
+               messages: [
+                 {role: "system", content: $system_prompt},
+                 {role: "user", content: $prompt_content}
+               ],
+               temperature: ($temperature | tonumber)
+            }' 2>&1)
+    fi
     
     # Clean up temp files
     rm -rf "$tmp_dir"
@@ -357,37 +405,74 @@ $prompt"
             }' 2>/dev/null)
             ;;
         *)
-            payload=$(echo "$base_payload" | jq '. + {
-                response_format: {type: "json_object"},
-                tool_choice: {
-                    type: "function",
-                    function: {
-                        name: "bash_completions",
-                        description: "syntactically correct command-line suggestions",
-                        parameters: {
-                            type: "object",
-                            properties: {
-                                commands: {type: "array", items: {type: "string", description: "A suggested command"}}
-                            },
-                            required: ["commands"]
+            # For OpenAI, check if using newer models that require max_completion_tokens
+            if [[ "${ACSH_MODEL}" =~ ^(o3|o1) ]]; then
+                payload=$(echo "$base_payload" | jq '. + {
+                    max_completion_tokens: 5000,
+                    response_format: {type: "json_object"},
+                    tool_choice: {
+                        type: "function",
+                        function: {
+                            name: "bash_completions",
+                            description: "syntactically correct command-line suggestions",
+                            parameters: {
+                                type: "object",
+                                properties: {
+                                    commands: {type: "array", items: {type: "string", description: "A suggested command"}}
+                                },
+                                required: ["commands"]
+                            }
                         }
-                    }
-                },
-                tools: [{
-                    type: "function",
-                    function: {
-                        name: "bash_completions",
-                        description: "syntactically correct command-line suggestions",
-                        parameters: {
-                            type: "object",
-                            properties: {
-                                commands: {type: "array", items: {type: "string", description: "A suggested command"}}
-                            },
-                            required: ["commands"]
+                    },
+                    tools: [{
+                        type: "function",
+                        function: {
+                            name: "bash_completions",
+                            description: "syntactically correct command-line suggestions",
+                            parameters: {
+                                type: "object",
+                                properties: {
+                                    commands: {type: "array", items: {type: "string", description: "A suggested command"}}
+                                },
+                                required: ["commands"]
+                            }
                         }
-                    }
-                }]
-            }' 2>/dev/null)
+                    }]
+                }' 2>/dev/null)
+            else
+                payload=$(echo "$base_payload" | jq '. + {
+                    max_tokens: 200,
+                    response_format: {type: "json_object"},
+                    tool_choice: {
+                        type: "function",
+                        function: {
+                            name: "bash_completions",
+                            description: "syntactically correct command-line suggestions",
+                            parameters: {
+                                type: "object",
+                                properties: {
+                                    commands: {type: "array", items: {type: "string", description: "A suggested command"}}
+                                },
+                                required: ["commands"]
+                            }
+                        }
+                    },
+                    tools: [{
+                        type: "function",
+                        function: {
+                            name: "bash_completions",
+                            description: "syntactically correct command-line suggestions",
+                            parameters: {
+                                type: "object",
+                                properties: {
+                                    commands: {type: "array", items: {type: "string", description: "A suggested command"}}
+                                },
+                                required: ["commands"]
+                            }
+                        }
+                    }]
+                }' 2>/dev/null)
+            fi
             ;;
     esac
     echo "$payload"
@@ -467,7 +552,40 @@ openai_completion() {
 EOF
 )
         else
-            payload=$(cat <<EOF
+            # Check if using newer OpenAI models that require max_completion_tokens
+            if [[ "${ACSH_MODEL}" =~ ^(o3|o1) ]]; then
+                payload=$(cat <<EOF
+{
+  "model": "${ACSH_MODEL:-gpt-4o-mini}",
+  "messages": [
+    {"role": "system", "content": "You are a helpful assistant that provides bash command completions. Return ONLY a JSON object with a 'commands' array containing 2-5 command completions."},
+    {"role": "user", "content": "Provide completions for: $user_input"}
+  ],
+  "max_completion_tokens": 5000,
+  "tools": [{
+    "type": "function",
+    "function": {
+      "name": "bash_completions",
+      "description": "Return command completions",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "commands": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Array of command completions"
+          }
+        },
+        "required": ["commands"]
+      }
+    }
+  }],
+  "tool_choice": "auto"
+}
+EOF
+)
+            else
+                payload=$(cat <<EOF
 {
   "model": "${ACSH_MODEL:-gpt-4o-mini}",
   "messages": [
@@ -479,6 +597,7 @@ EOF
 }
 EOF
 )
+            fi
     fi
     fi
     
@@ -609,6 +728,11 @@ _autocompletesh() {
     command="${words[1]}"
     current="${words[CURRENT]}"
     
+    # Debug logging to understand the issue
+    if [[ -n "$DEBUG_AUTOCOMPLETE" ]]; then
+        echo "CURRENT=$CURRENT, words=(${words[@]}), LBUFFER='$LBUFFER'" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
+    fi
+    
     # Clean up any artifacts zsh might have added
     user_input="${user_input%\\}"
     user_input="${user_input% }"
@@ -652,14 +776,14 @@ _autocompletesh() {
             # Set loading flag
             export ACSH_LOADING=1
             
-            # Show simple loading message
-            printf '\rLoading completions...' >&2
+            # Show loading message on the next line
+            printf '\nLoading completions...' >&2
             
             # Make API request
             completions=$(openai_completion "$user_input" 2>/dev/null || true)
             
-            # Clear loading message and flag
-            printf '\r                      \r' >&2
+            # Clear loading message by moving up and clearing the line
+            printf '\033[1A\033[2K' >&2
             unset ACSH_LOADING
             if [[ -d "$cache_dir" && "$cache_size" -gt 0 ]]; then
                 echo "$completions" > "$cache_file"
@@ -687,16 +811,31 @@ _autocompletesh() {
             local -a suggestions
             
             if [[ $num_rows -eq 1 ]]; then
-                # Single completion - use compadd with -Q and -U to replace entire line
-                compadd -Q -U -- "$completions"
+                # Single completion - clear prefix to prevent duplication
+                PREFIX=""
+                SUFFIX=""
+                compadd -Q -- "$completions"
                 return
             else
                 # Multiple completions
                 local -a actual_commands
                 while IFS= read -r line; do
                     if [[ -n "$line" ]]; then
-                        # Add the full command for proper menu display
-                        actual_commands+=("$user_input $line")
+                        # Strip any comments or descriptions after # or multiple spaces first
+                        line=$(echo "$line" | sed 's/  *#.*//' | sed 's/  \+.*//' | sed 's/[[:space:]]*$//')
+                        
+                        # Remove angle brackets placeholders like <formula>, <package>, etc.
+                        line=$(echo "$line" | sed 's/ <[^>]*>//g')
+                        
+                        # Check if this is a complete command that already includes the base command
+                        if [[ "$line" == "$user_input "* ]]; then
+                            # This is a full command, strip the user input prefix to avoid duplication
+                            line="${line#$user_input }"
+                        fi
+                        
+                        if [[ -n "$line" ]]; then
+                            actual_commands+=("$line")
+                        fi
                     fi
                 done <<< "$completions"
                 
@@ -714,15 +853,21 @@ _autocompletesh() {
                     for cmd in "${filtered_commands[@]}"; do
                         echo "  '$cmd'" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
                     done
-                    # Clear the PREFIX to prevent duplication
-                    PREFIX=""
-                    # Add completions that will replace the entire line
-                    # Use -Q to prevent backslash escaping of spaces
-                    compadd -Q -U -- "${filtered_commands[@]}"
+                    # Add completions for the current word position
+                    # Let zsh handle the display properly
+                    if [[ "$user_input" == *" " ]]; then
+                        # User typed "brew " with space, add as new words
+                        compadd -- "${filtered_commands[@]}"
+                    else
+                        # User typed "brew" without space, add as continuations
+                        compadd -S ' ' -- "${filtered_commands[@]}"
+                    fi
                 else
                     # No valid completions after filtering, try showing original
                     if [[ ${#actual_commands[@]} -gt 0 ]]; then
-                        compadd -Q -U -- "${actual_commands[@]}"
+                        PREFIX=""
+                        SUFFIX=""
+                        compadd -Q -- "${actual_commands[@]}"
                     else
                         # No completions at all
                         return 0
@@ -841,6 +986,12 @@ set_config() {
     key=$(echo "$key" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     # Keep key in lowercase for config file
     key=$(echo "$key" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g')
+    
+    # Debug logging
+    if [[ -n "$DEBUG_AUTOCOMPLETE" ]]; then
+        echo_error "Debug set_config: key='$key', value='$value'"
+    fi
+    
     if [ -z "$key" ]; then
         echo_error "SyntaxError: expected 'autocomplete config set <key> <value>'"
         return
@@ -850,6 +1001,13 @@ set_config() {
         return
     fi
     sed -i '' "s|^\($key:\).*|\1 $value|" "$config_file"
+    
+    # Debug: Check if the update worked
+    if [[ -n "$DEBUG_AUTOCOMPLETE" ]]; then
+        local updated_value=$(grep "^$key:" "$config_file" | cut -d' ' -f2-)
+        echo_error "Debug set_config: Updated value in file='$updated_value'"
+    fi
+    
     acsh_load_config
 }
 
@@ -1176,9 +1334,34 @@ get_key() {
 menu_selector() {
     options=("$@")
     selected=1
+    
+    # Use alternate screen buffer for menu
+    tput smcup  # Save screen and switch to alternate buffer
+    tput clear  # Clear once at start
+    tput civis  # Hide cursor
+    
+    # Pre-calculate total lines needed
+    local total_lines=3  # Header lines
+    local prev_provider=""
+    for opt in "${options[@]}"; do
+        local current_provider="${opt%%:*}"
+        if [[ -n "$prev_provider" && "$current_provider" != "$prev_provider" ]]; then
+            ((total_lines++))  # Space between providers
+        fi
+        ((total_lines++))
+        prev_provider="$current_provider"
+    done
+    
     show_menu() {
+        # Move cursor to home position instead of clearing entire screen
+        tput cup 0 0
+        
         echo
         echo "Select a Language Model (Up/Down arrows, Enter to select, 'q' to quit):"
+        
+        # Get current model from config
+        local current_model="${ACSH_MODEL:-}"
+        
         local i display_option prev_provider=""
         for (( i=1; i<=${#options[@]}; i++ )); do
             display_option="${options[i]}"
@@ -1187,24 +1370,38 @@ menu_selector() {
             
             # Add empty line between different providers
             if [[ -n "$prev_provider" && "$current_provider" != "$prev_provider" ]]; then
-                echo
+                echo -e "\e[K"  # Clear line
             fi
             prev_provider="$current_provider"
             
             # Format: replace tab with space and ensure it's on one line
             display_option="${display_option//	/: }"
             
+            # Check if this is the currently active model
+            local model_from_option=$(echo "${options[i]}" | sed 's/.*:\t\+//')
+            local is_current_model=0
+            if [[ "$model_from_option" == "$current_model" ]]; then
+                is_current_model=1
+            fi
+            
             if (( i == selected )); then
-                echo -e "\e[1;32m> ${display_option}\e[0m"
+                echo -e "\e[1;32m> ${display_option}\e[0m\e[K"
+            elif [[ $is_current_model -eq 1 ]]; then
+                # Show current model in green with a marker
+                echo -e "  \e[32m${display_option} [current]\e[0m\e[K"
             else
-                echo "  ${display_option}"
+                echo -e "  ${display_option}\e[K"
             fi
         done
+        
+        # Clear any remaining lines from previous display
+        tput cd
     }
-    tput sc
+    
+    # Initial display
+    show_menu
+    
     while true; do
-        tput rc; tput ed
-        show_menu
         key=$(get_key)
         case $key in
             up)
@@ -1212,58 +1409,165 @@ menu_selector() {
                 if (( selected < 1 )); then
                     selected=${#options[@]}
                 fi
+                show_menu
                 ;;
             down)
                 ((selected++))
                 if (( selected > ${#options[@]} )); then
                     selected=1
                 fi
+                show_menu
                 ;;
             q)
+                tput cnorm  # Show cursor again
+                tput rmcup  # Restore original screen
                 echo "Selection canceled."
-                return 1
+                return 255  # Use 255 for cancellation instead of 1
                 ;;
             "")
+                tput cnorm  # Show cursor again
+                tput rmcup  # Restore original screen before breaking
                 break
                 ;;
         esac
     done
-    clear
+    
     return $selected
 }
 
 model_command() {
+    # Disable any trace that might be on
+    set +x 2>/dev/null
+    
+    # Clear screen and move to top to ensure clean start
     clear
+    printf '\033[H'
+    
+    local debug_file="$HOME/.autocomplete/debug_haiku.txt"
+    {
+        echo "$(date): model_command started with $# args: $@"
+    } >> "$debug_file"
+    
+    # Suppress any spurious output by redirecting stderr to null temporarily
+    {
+        # Load models from JSON (only when needed)
+        _load_models_from_json
+    } 2>/dev/null
+    
+    # Debug: Check if models were loaded
+    if [[ -n "$DEBUG_AUTOCOMPLETE" ]]; then
+        echo_error "Debug: Models loaded: $_autocomplete_models_loaded"
+        echo_error "Debug: Number of models: ${#_autocomplete_modellist[@]}"
+    fi
+    
+    {
+        echo "$(date): Models loaded: $_autocomplete_models_loaded"
+        echo "Number of models: ${#_autocomplete_modellist[@]}"
+    } >> "$debug_file"
+    
+    # Don't clear if debugging
+    if [[ -z "$DEBUG_AUTOCOMPLETE" ]]; then
+        [[ $# -eq 0 ]] && clear
+    fi
     local selected_model options=()
     if [[ $# -ne 3 ]]; then
-        # In zsh, use a simple for-loop to build an array of sorted keys.
-        local sorted_keys
-        sorted_keys=()
-        for key in ${(k)_autocomplete_modellist}; do
-            sorted_keys+=($key)  # No quotes to avoid double quoting
+        # Use the ordered keys from the JSON file
+        # Suppress any debug output during array building
+        { set +x; set +v; } 2>/dev/null
+        for key in "${_autocomplete_model_keys[@]}"; do
+            options+=("$key")
         done
-        # Sort the array
-        sorted_keys=(${(o)sorted_keys[@]})
-        for key in ${sorted_keys[@]}; do
-            options+=($key)  # No quotes to avoid double quoting
-        done
+        
+        # Clear terminal right before showing the header
+        clear
         echo -e "\e[1;32mAutocomplete.zsh - Model Configuration\e[0m"
+        
+        # Debug to file for haiku testing
+        local debug_file="$HOME/.autocomplete/debug_haiku.txt"
+        if [[ "${options[1]}" =~ "haiku" ]]; then
+            {
+                echo "$(date): HAIKU DEBUG - Menu start"
+                echo "First option contains haiku!"
+                echo "  options[1]='${options[1]}'"
+                echo "  options[2]='${options[2]}'"
+                echo "  options[3]='${options[3]}'"
+                echo "  Total options: ${#options[@]}"
+            } >> "$debug_file"
+        fi
+        
         menu_selector "${options[@]}"
         selected_option=$?
-        if [[ $selected_option -eq 1 ]]; then
+        if [[ $selected_option -eq 255 ]]; then
             return
         fi
         selected_model="${options[selected_option]}"
+        
+        # Debug to file for haiku
+        if [[ "$selected_model" =~ "haiku" ]] || [[ $selected_option -eq 1 ]]; then
+            {
+                echo "$(date): HAIKU DEBUG - Post-select"
+                echo "  selected_option=$selected_option"
+                echo "  selected_model='$selected_model'"
+                echo "  Looking up in modellist..."
+            } >> "$debug_file"
+        fi
+        
         selected_value="${_autocomplete_modellist[$selected_model]}"
+        
+        # Debug to file for haiku
+        if [[ "$selected_model" =~ "haiku" ]] || [[ $selected_option -eq 1 ]]; then
+            {
+                echo "$(date): HAIKU DEBUG - Lookup result"
+                echo "  selected_value='$selected_value'"
+                if [[ -z "$selected_value" ]]; then
+                    echo "  ERROR: Lookup failed! Model list has these haiku keys:"
+                    for k in ${(k)_autocomplete_modellist}; do
+                        if [[ "$k" =~ "haiku" ]]; then
+                            echo "    '$k'"
+                        fi
+                    done
+                else
+                    echo "  SUCCESS: Found value!"
+                    echo "  Model will be set to: $(echo "$selected_value" | jq -r '.model')"
+                fi
+                echo "---"
+            } >> "$debug_file"
+        fi
     else
         provider="$2"
         model_name="$3"
-        selected_value="${_autocomplete_modellist["$provider:	$model_name"]}"
+        # Use printf to ensure we have a tab character
+        local key
+        if [[ "$provider" == "groq" ]]; then
+            key=$(printf "%s:\t\t%s" "$provider" "$model_name")
+        else
+            key=$(printf "%s:\t%s" "$provider" "$model_name")
+        fi
+        selected_value="${_autocomplete_modellist[$key]}"
         if [[ -z "$selected_value" ]]; then
             echo "ERROR: Invalid provider or model name."
+            echo "Debug: Looking for key: '$key'"
+            echo "Debug: Key hex:"
+            echo -n "$key" | xxd -p
+            echo "Debug: Available keys:"
+            for k in ${(k)_autocomplete_modellist}; do
+                if [[ "$k" =~ "$provider" ]]; then
+                    echo "  Key: '$k'"
+                    if [[ "$k" =~ "haiku" ]]; then
+                        echo -n "  Hex: "
+                        echo -n "$k" | xxd -p
+                    fi
+                fi
+            done
             return 1
         fi
     fi
+    # Debug: Log what we're about to set
+    if [[ -n "$DEBUG_AUTOCOMPLETE" ]]; then
+        echo_error "Debug: selected_value='$selected_value'"
+        echo_error "Debug: model='$(echo "$selected_value" | jq -r '.model')'"
+    fi
+    
     set_config "model" "$(echo "$selected_value" | jq -r '.model')"
     set_config "endpoint" "$(echo "$selected_value" | jq -r '.endpoint')"
     set_config "provider" "$(echo "$selected_value" | jq -r '.provider')"
@@ -1333,6 +1637,20 @@ model_command() {
 ###############################################################################
 #                              CLI ENTRY POINT                                #
 ###############################################################################
+
+# Disable trace to prevent debug output
+set +x 2>/dev/null
+
+# For model command, create a clean execution environment
+if [[ "$1" == "model" ]]; then
+    # Unset any trace variables
+    unset XTRACE
+    unset VERBOSE
+    # Force trace off
+    set +xv
+    # Clear immediately
+    clear
+fi
 
 case "$1" in
     "--help")

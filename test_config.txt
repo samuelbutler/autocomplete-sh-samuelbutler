@@ -1,0 +1,32 @@
+# ~/.autocomplete/config
+
+# OpenAI API Key
+openai_api_key: $OPENAI_API_KEY
+
+# Anthropic API Key
+anthropic_api_key: $ANTHROPIC_API_KEY
+
+# Groq API Key
+groq_api_key: $GROQ_API_KEY
+
+# Custom API Key for Ollama
+custom_api_key: $LLM_API_KEY
+
+# Model configuration
+provider: anthropic
+model: claude-3-5-haiku-20241022
+temperature: 0.0
+endpoint: https://api.anthropic.com/v1/messages
+api_prompt_cost: 0.00000300
+api_completion_cost: 0.00001500
+
+# Max history and recent files
+max_history_commands: 20
+max_recent_files: 20
+
+# Cache settings
+cache_dir: $HOME/.autocomplete/cache
+cache_size: 10
+
+# Logging settings
+log_file: $HOME/.autocomplete/autocomplete.log

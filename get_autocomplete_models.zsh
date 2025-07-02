@@ -149,7 +149,7 @@ fetch_openai_models() {
     
     # Extract model IDs that are suitable for chat completions
     # Filter for gpt, o1, and o3 models
-    local models=$(echo "$response" | jq -r '.data[] | select(.id | test("^(gpt|o1|o3)")) | .id' | sort -u)
+    local models=$(echo "$response" | jq -r '.data[] | select(.id | test("^(gpt|o1|o3)")) | .id' | sort -ru)
     
     # Build JSON array of model objects
     local json_array="[]"
@@ -208,7 +208,7 @@ fetch_anthropic_models() {
     fi
     
     # Extract model IDs
-    local models=$(echo "$response" | jq -r '.data[] | .id' | sort -u)
+    local models=$(echo "$response" | jq -r '.data[] | .id' | sort -ru)
     
     # Build JSON array of model objects
     local json_array="[]"
@@ -239,108 +239,10 @@ fetch_anthropic_models() {
     echo "$json_array"
 }
 
-# Get static models (Groq, Ollama)
+# Get static models (Ollama only, no Groq)
 get_static_models() {
     cat <<'EOF'
 [
-    {
-        "model": "llama3-8b-8192",
-        "provider": "groq",
-        "endpoint": "https://api.groq.com/openai/v1/chat/completions",
-        "prompt_cost": 0,
-        "completion_cost": 0
-    },
-    {
-        "model": "llama3-70b-8192",
-        "provider": "groq",
-        "endpoint": "https://api.groq.com/openai/v1/chat/completions",
-        "prompt_cost": 0,
-        "completion_cost": 0
-    },
-    {
-        "model": "llama-3.3-70b-versatile",
-        "provider": "groq",
-        "endpoint": "https://api.groq.com/openai/v1/chat/completions",
-        "prompt_cost": 0,
-        "completion_cost": 0
-    },
-    {
-        "model": "llama-3.1-8b-instant",
-        "provider": "groq",
-        "endpoint": "https://api.groq.com/openai/v1/chat/completions",
-        "prompt_cost": 0,
-        "completion_cost": 0
-    },
-    {
-        "model": "llama-guard-3-8b",
-        "provider": "groq",
-        "endpoint": "https://api.groq.com/openai/v1/chat/completions",
-        "prompt_cost": 0,
-        "completion_cost": 0
-    },
-    {
-        "model": "mixtral-8x7b-32768",
-        "provider": "groq",
-        "endpoint": "https://api.groq.com/openai/v1/chat/completions",
-        "prompt_cost": 0,
-        "completion_cost": 0
-    },
-    {
-        "model": "gemma2-9b-it",
-        "provider": "groq",
-        "endpoint": "https://api.groq.com/openai/v1/chat/completions",
-        "prompt_cost": 0,
-        "completion_cost": 0
-    },
-    {
-        "model": "mistral-saba-24b",
-        "provider": "groq",
-        "endpoint": "https://api.groq.com/openai/v1/chat/completions",
-        "prompt_cost": 0,
-        "completion_cost": 0
-    },
-    {
-        "model": "qwen-2.5-coder-32b",
-        "provider": "groq",
-        "endpoint": "https://api.groq.com/openai/v1/chat/completions",
-        "prompt_cost": 0,
-        "completion_cost": 0
-    },
-    {
-        "model": "deepseek-r1-distill-qwen-32b",
-        "provider": "groq",
-        "endpoint": "https://api.groq.com/openai/v1/chat/completions",
-        "prompt_cost": 0,
-        "completion_cost": 0
-    },
-    {
-        "model": "deepseek-r1-distill-llama-70b-specdec",
-        "provider": "groq",
-        "endpoint": "https://api.groq.com/openai/v1/chat/completions",
-        "prompt_cost": 0,
-        "completion_cost": 0
-    },
-    {
-        "model": "llama-3.3-70b-specdec",
-        "provider": "groq",
-        "endpoint": "https://api.groq.com/openai/v1/chat/completions",
-        "prompt_cost": 0,
-        "completion_cost": 0
-    },
-    {
-        "model": "llama-3.2-1b-preview",
-        "provider": "groq",
-        "endpoint": "https://api.groq.com/openai/v1/chat/completions",
-        "prompt_cost": 0,
-        "completion_cost": 0
-    },
-    {
-        "model": "llama-3.2-3b-preview",
-        "provider": "groq",
-        "endpoint": "https://api.groq.com/openai/v1/chat/completions",
-        "prompt_cost": 0,
-        "completion_cost": 0
-    },
     {
         "model": "codellama",
         "provider": "ollama",
@@ -370,7 +272,7 @@ main() {
     local anthropic_models=$(fetch_anthropic_models || echo "[]")
     local static_models=$(get_static_models || echo "[]")
     
-    # Combine all models into a single JSON object
+    # Combine all models and filter out unwanted ones (Anthropic first, then OpenAI, then static)
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     local all_models=$(jq -n \
         --arg timestamp "$timestamp" \
@@ -379,8 +281,33 @@ main() {
         --argjson static "$static_models" \
         '{
             "timestamp": $timestamp,
-            "models": ($openai + $anthropic + $static)
+            "models": ($anthropic + $openai + $static) | 
+                map(select(
+                    (.model | ascii_downcase | contains("preview") | not) and
+                    (.model | ascii_downcase | contains("search") | not) and
+                    (.model | test("\\d{4}-\\d{2}-\\d{2}") | not) and
+                    (.model | ascii_downcase | contains("transcribe") | not) and
+                    (.model | ascii_downcase | contains("tts") | not) and
+                    (.model | ascii_downcase | contains("image") | not)
+                ))
         }')
+    
+    # Get all models before filtering for comparison
+    local all_models_unfiltered=$(jq -n \
+        --argjson openai "$openai_models" \
+        --argjson anthropic "$anthropic_models" \
+        --argjson static "$static_models" \
+        '($anthropic + $openai + $static)')
+    
+    # Find filtered models
+    local filtered_models=$(echo "$all_models_unfiltered" | jq -r '.[] | select(
+        (.model | ascii_downcase | contains("preview")) or
+        (.model | ascii_downcase | contains("search")) or
+        (.model | test("\\d{4}-\\d{2}-\\d{2}")) or
+        (.model | ascii_downcase | contains("transcribe")) or
+        (.model | ascii_downcase | contains("tts")) or
+        (.model | ascii_downcase | contains("image"))
+    ) | .model' | sort)
     
     # Save to file
     if [[ -n "$all_models" ]]; then
@@ -390,6 +317,16 @@ main() {
         echo_green "Successfully saved models to $OUTPUT_FILE"
         echo "Total models: $(echo "$all_models" | jq '.models | length')"
         echo ""
+        
+        # Show filtered models
+        if [[ -n "$filtered_models" ]]; then
+            echo "Filtered out models (containing preview/search/transcribe/tts/image or date format YYYY-MM-DD):"
+            echo "$filtered_models" | while read -r model; do
+                echo "  - $model"
+            done
+            echo ""
+        fi
+        
         echo "Model count by provider:"
         echo "$all_models" | jq -r '.models | group_by(.provider) | .[] | "\(.[0].provider): \(length)"' || true
     else
