@@ -779,19 +779,21 @@ _autocompletesh() {
             # Disable job control messages temporarily
             setopt local_options no_monitor
             
-            # Show spinner inline on the same line with better control
+            # Show spinner with absolute positioning
             {
                 local spinner=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
                 local i=0
-                # Save cursor position and add space for spinner
-                printf '\033[s  \033[u\033[1C' >&2  # Save pos, add 2 spaces, restore, move right 1
+                # Get current cursor column position
+                local col=$((${#user_input} + 3))  # Command length + prompt + spaces
+                # Add spaces for spinner
+                printf '  ' >&2
                 while [[ -n "$ACSH_LOADING" ]]; do
-                    # Print spinner at saved position + 1
-                    printf '%s\033[D' "${spinner[$((i++ % 10))]}" >&2  # Print spinner, move left
+                    # Move to absolute column position and print spinner
+                    printf '\r\033[%dC%s' "$col" "${spinner[$((i++ % 10))]}" >&2
                     sleep 0.1
                 done
-                # Clear spinner by printing space
-                printf ' \033[D' >&2
+                # Clear spinner
+                printf '\r\033[%dC ' "$col" >&2
             } 2>&1 &
             local spinner_pid=$!
             
