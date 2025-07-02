@@ -596,7 +596,7 @@ _autocompletesh() {
     local state line command current user_input completions user_input_hash
     
     # Prevent zsh from adding backslashes or modifying the buffer
-    setopt localoptions noshglob noksharrays
+    setopt localoptions noshglob noksharrays menucomplete
     
     # Check if we're already loading to prevent duplicate messages
     if [[ -n "$ACSH_LOADING" ]]; then
@@ -714,10 +714,9 @@ _autocompletesh() {
                     for cmd in "${filtered_commands[@]}"; do
                         echo "  '$cmd'" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
                     done
-                    # Force menu completion
-                    compstate[insert]=menu
-                    # Add completions as continuations of the current word
-                    compadd -S ' ' -X 'brew commands:' -- "${filtered_commands[@]}"
+                    # Add completions without forcing menu mode
+                    # Let zsh handle the display based on user's zstyle settings
+                    compadd -S ' ' -- "${filtered_commands[@]}"
                 else
                     # No valid completions after filtering, try showing original
                     if [[ ${#actual_commands[@]} -gt 0 ]]; then
