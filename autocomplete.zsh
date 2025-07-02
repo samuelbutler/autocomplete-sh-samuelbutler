@@ -779,22 +779,23 @@ _autocompletesh() {
             # Disable job control messages temporarily
             setopt local_options no_monitor
             
-            # Show minimal spinner inline
+            # Show spinner inline on the same line with better control
             {
                 local spinner=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
                 local i=0
-                # Just add a space and show spinner
-                printf ' ' >&2
+                # Save cursor position and add space for spinner
+                printf '\033[s  \033[u\033[1C' >&2  # Save pos, add 2 spaces, restore, move right 1
                 while [[ -n "$ACSH_LOADING" ]]; do
-                    printf '\b%s' "${spinner[$((i++ % 10))]}" >&2
+                    # Print spinner at saved position + 1
+                    printf '%s\033[D' "${spinner[$((i++ % 10))]}" >&2  # Print spinner, move left
                     sleep 0.1
                 done
-                # Clear the spinner
-                printf '\b ' >&2
-            } 2>/dev/null &
+                # Clear spinner by printing space
+                printf ' \033[D' >&2
+            } 2>&1 &
             local spinner_pid=$!
             
-            # Make API request
+            # Make API request (stderr already redirected to /dev/null)
             completions=$(openai_completion "$user_input" 2>/dev/null || true)
             
             # Stop spinner
