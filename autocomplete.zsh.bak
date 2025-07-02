@@ -9,11 +9,18 @@
 # Note: Do not enable “set -euo pipefail” here because it may interfere with shell completion.
 
 ###############################################################################
-#                    Initialize Native Zsh Completion                        #
+#                    Initialize Zsh Completion Compatibility                #
 ###############################################################################
-# Make sure that the native zsh completion system is loaded
+# Make sure that the native completion system is loaded and enable the bash
+# compatibility layer so that our original Bash-style completions work.
 if [[ -n $ZSH_VERSION ]]; then
     autoload -Uz compinit && compinit -u
+    autoload -Uz bashcompinit && bashcompinit
+fi
+
+# Define a no-op _init_completion if not already defined.
+if ! whence _init_completion &>/dev/null; then
+    _init_completion() { return 0; }
 fi
 
 ###############################################################################
@@ -107,10 +114,13 @@ _system_info() {
 
 _completion_vars() {
     echo "BASH_COMPLETION_VERSINFO: ${BASH_COMPLETION_VERSINFO}"
-    echo "BUFFER: ${BUFFER}"
-    echo "CURSOR: ${CURSOR}"
-    echo "words: ${words[@]}"
-    echo "CURRENT: ${CURRENT}"
+    echo "COMP_CWORD: ${COMP_CWORD}"
+    echo "COMP_KEY: ${COMP_KEY}"
+    echo "COMP_LINE: ${COMP_LINE}"
+    echo "COMP_POINT: ${COMP_POINT}"
+    echo "COMP_TYPE: ${COMP_TYPE}"
+    echo "COMP_WORDBREAKS: ${COMP_WORDBREAKS}"
+    echo "COMP_WORDS: ${COMP_WORDS[@]}"
 }
 
 ###############################################################################
@@ -127,7 +137,7 @@ _get_output_instructions() {
 
 _get_command_history() {
     local HISTORY_LIMIT=${ACSH_MAX_HISTORY_COMMANDS:-20}
-    history | tail -n "$HISTORY_LIMIT" | tr -d '\000-\037'
+    history | tail -n "$HISTORY_LIMIT"
 }
 
 # Refined sanitization: replace long hex sequences, UUIDs, and API-key–like tokens.
@@ -142,7 +152,7 @@ _get_clean_command_history() {
 
 _get_recent_files() {
     local FILE_LIMIT=${ACSH_MAX_RECENT_FILES:-20}
-    find . -maxdepth 1 -type f -exec ls -ld {} + | sort -r | head -n "$FILE_LIMIT" | tr -d '\000-\037'
+    find . -maxdepth 1 -type f -exec ls -ld {} + | sort -r | head -n "$FILE_LIMIT"
 }
 
 # Rewritten _get_help_message using a heredoc to preserve formatting.
@@ -152,16 +162,10 @@ _get_help_message() {
     HELP_INFO=""
     {
         set +e
-        # Get help and clean it up
-        HELP_INFO=$($COMMAND --help 2>&1 || true)
-        # Remove control characters and fix common problematic patterns
-        # Remove ANSI escape sequences, control characters, and ensure valid UTF-8
-        # Also remove escaped quotes that docker adds around paths
-        HELP_INFO=$(echo "$HELP_INFO" | \
-            sed 's/\x1b\[[0-9;]*m//g' | \
-            sed 's/\\"/"/g' | \
-            tr -d '\000-\010\013-\037\177' | \
-            iconv -f UTF-8 -t UTF-8 -c)
+        HELP_INFO=$(cat <<EOF
+$($COMMAND --help 2>&1 || true)
+EOF
+        )
         set -e
     } || HELP_INFO="'$COMMAND --help' not available"
     echo "$HELP_INFO"
@@ -172,7 +176,6 @@ _build_prompt() {
     user_input="$*"
     command_history=$(_get_clean_command_history)
     terminal_context=$(_get_terminal_info)
-    # Get help message with proper escaping
     help_message=$(_get_help_message "$user_input")
     recent_files=$(_get_recent_files)
     output_instructions=$(_get_output_instructions)
@@ -201,6 +204,9 @@ Most recently modified files:
 $recent_files
 \`\`\`
 
+## Help Information
+$help_message
+
 # Instructions
 $output_instructions
 "
@@ -212,59 +218,18 @@ $output_instructions
 ###############################################################################
 
 build_common_payload() {
-    # Debug variables
-    if [[ -n "$DEBUG_AUTOCOMPLETE" ]]; then
-        echo_error "Debug: model='$model'"
-        echo_error "Debug: temperature='$temperature'"
-        echo_error "Debug: system_prompt length=${#system_prompt}"
-        echo_error "Debug: prompt_content length=${#prompt_content}"
-    fi
-    
-    # Create temp files for the content
-    local tmp_dir="/tmp/autocomplete_$$"
-    mkdir -p "$tmp_dir"
-    
-    # Write content to temp files
-    printf '%s' "$system_prompt" > "$tmp_dir/system.txt"
-    printf '%s' "$prompt_content" > "$tmp_dir/prompt.txt"
-    
-    # Debug: save to permanent location
-    if [[ -n "$DEBUG_AUTOCOMPLETE" ]]; then
-        cp "$tmp_dir/system.txt" "$HOME/.autocomplete/tmp/debug_system.txt"
-        cp "$tmp_dir/prompt.txt" "$HOME/.autocomplete/tmp/debug_prompt.txt"
-    fi
-    
-    # Build JSON using the temp files
-    local result
-    result=$(jq -n \
-        --arg model "$model" \
-        --arg temperature "$temperature" \
-        --rawfile system_prompt "$tmp_dir/system.txt" \
-        --rawfile prompt_content "$tmp_dir/prompt.txt" \
-        '{
-           model: $model,
-           messages: [
-             {role: "system", content: $system_prompt},
-             {role: "user", content: $prompt_content}
-           ],
-           temperature: ($temperature | tonumber)
-        }' 2>&1)
-    
-    # Clean up temp files
-    rm -rf "$tmp_dir"
-    
-    if [[ -n "$DEBUG_AUTOCOMPLETE" ]]; then
-        if [[ "$result" =~ "parse error" ]]; then
-            echo_error "Debug: jq error: $result"
-            # Save the error and the input files
-            echo "$result" > "$HOME/.autocomplete/tmp/jq_error.txt"
-        else
-            # Save successful result
-            echo "$result" > "$HOME/.autocomplete/tmp/jq_success.json"
-        fi
-    fi
-    
-    echo "$result"
+    jq -n --arg model "$model" \
+          --arg temperature "$temperature" \
+          --arg system_prompt "$system_prompt" \
+          --arg prompt_content "$prompt_content" \
+          '{
+             model: $model,
+             messages: [
+               {role: "system", content: $system_prompt},
+               {role: "user", content: $prompt_content}
+             ],
+             temperature: ($temperature | tonumber)
+          }'
 }
 
 _build_payload() {
@@ -283,43 +248,15 @@ $system_message_prompt
 $prompt"
     export ACSH_PROMPT="$acsh_prompt"
 
-    # Clean control characters from prompts to avoid JSON parsing errors
-    # Also ensure valid UTF-8 and remove any problematic characters
-    prompt_content=$(echo "$prompt" | \
-        sed 's/\x1b\[[0-9;]*m//g' | \
-        tr -d '\000-\010\013-\037\177' | \
-        iconv -f UTF-8 -t UTF-8 -c)
-    system_prompt=$(echo "$system_message_prompt" | \
-        sed 's/\x1b\[[0-9;]*m//g' | \
-        tr -d '\000-\010\013-\037\177' | \
-        iconv -f UTF-8 -t UTF-8 -c)
-    
-    # Debug: save raw content
-    if [[ -n "$DEBUG_AUTOCOMPLETE" ]]; then
-        mkdir -p "$HOME/.autocomplete/tmp"
-        echo "$prompt" > "$HOME/.autocomplete/tmp/raw_prompt.txt"
-        echo "$system_message_prompt" > "$HOME/.autocomplete/tmp/raw_system.txt"
-    fi
+    prompt_content="$prompt"
+    system_prompt="$system_message_prompt"
 
     local base_payload
-    # Don't suppress errors during debug
-    if [[ -n "$DEBUG_AUTOCOMPLETE" ]]; then
-        base_payload=$(build_common_payload)
-    else
-        base_payload=$(build_common_payload 2>/dev/null)
-    fi
+    base_payload=$(build_common_payload)
 
     case "${(U)ACSH_PROVIDER}" in
         "ANTHROPIC")
-            if [[ -n "$DEBUG_AUTOCOMPLETE" ]]; then
-                echo_error "Debug: Building Anthropic payload..."
-                echo "$base_payload" > "$HOME/.autocomplete/tmp/base_payload.json"
-            fi
-            # Save base payload to file to avoid pipe issues
-            local tmp_base="/tmp/autocomplete_base_$$.json"
-            echo "$base_payload" > "$tmp_base"
-            
-            payload=$(jq '. + {
+            payload=$(echo "$base_payload" | jq '. + {
                 system: .messages[0].content,
                 messages: [{role:"user", content: .messages[1].content}],
                 max_tokens: 1024,
@@ -335,23 +272,17 @@ $prompt"
                         required: ["commands"]
                     }
                 }]
-            }' "$tmp_base" 2>&1)
-            
-            rm -f "$tmp_base"
-            
-            if [[ -n "$DEBUG_AUTOCOMPLETE" ]] && [[ "$payload" =~ "parse error" ]]; then
-                echo_error "Debug: Anthropic payload error: $payload"
-            fi
+            }')
             ;;
         "GROQ")
-            payload=$(echo "$base_payload" | jq '. + {response_format: {type: "json_object"}}' 2>/dev/null)
+            payload=$(echo "$base_payload" | jq '. + {response_format: {type: "json_object"}}')
             ;;
         "OLLAMA")
             payload=$(echo "$base_payload" | jq '. + {
                 format: "json",
                 stream: false,
                 options: {temperature: (.temperature | tonumber)}
-            }' 2>/dev/null)
+            }')
             ;;
         *)
             payload=$(echo "$base_payload" | jq '. + {
@@ -384,7 +315,7 @@ $prompt"
                         }
                     }
                 }]
-            }' 2>/dev/null)
+            }')
             ;;
     esac
     echo "$payload"
@@ -419,8 +350,7 @@ log_request() {
 openai_completion() {
     local content status_code response_body default_user_input user_input api_key payload endpoint timeout attempt max_attempts
     endpoint=${ACSH_ENDPOINT:-"https://api.openai.com/v1/chat/completions"}
-    # Use shorter timeout for interactive completion
-    timeout=${ACSH_TIMEOUT:-5}
+    timeout=${ACSH_TIMEOUT:-30}
     default_user_input="Write two to six most likely commands given the provided information"
     user_input=${*:-$default_user_input}
 
@@ -431,69 +361,7 @@ openai_completion() {
     api_key="${ACSH_ACTIVE_API_KEY:-$OPENAI_API_KEY}"
     payload=$(_build_payload "$user_input")
     
-    # Check if payload is empty or contains error
-    if [[ -z "$payload" ]] || [[ "$payload" =~ "parse error" ]]; then
-        # Use a simple fallback payload based on provider
-        if [[ "${(U)ACSH_PROVIDER}" == "ANTHROPIC" ]]; then
-            payload=$(cat <<EOF
-{
-  "model": "${ACSH_MODEL:-claude-3-5-sonnet-20241022}",
-  "system": "You are a helpful bash completion assistant. Generate command-line completions.",
-  "messages": [
-    {"role": "user", "content": "Provide completions for: $user_input"}
-  ],
-  "temperature": 0,
-  "max_tokens": 200,
-  "tool_choice": {"type": "tool", "name": "bash_completions"},
-  "tools": [{
-    "name": "bash_completions",
-    "description": "Provide command-line completion suggestions",
-    "input_schema": {
-      "type": "object",
-      "properties": {
-        "commands": {
-          "type": "array",
-          "items": {"type": "string", "description": "A suggested command"},
-          "description": "Array of 2-5 command completions"
-        }
-      },
-      "required": ["commands"]
-    }
-  }]
-}
-EOF
-)
-        else
-            payload=$(cat <<EOF
-{
-  "model": "${ACSH_MODEL:-gpt-4o-mini}",
-  "messages": [
-    {"role": "system", "content": "You are a helpful assistant that provides command completions. Suggest 2-5 completions for the given command."},
-    {"role": "user", "content": "Provide completions for: $user_input"}
-  ],
-  "temperature": 0,
-  "max_tokens": 100
-}
-EOF
-)
-    fi
-    fi
-    
-    # Always save payload for debugging API errors
-    mkdir -p "$HOME/.autocomplete/tmp"
-    echo "$payload" > "$HOME/.autocomplete/tmp/autocomplete_payload.json"
-    
-    # Debug: Save payload to file for inspection
-    if [[ -n "$DEBUG_AUTOCOMPLETE" ]]; then
-        echo_error "Debug: Payload saved to $HOME/.autocomplete/tmp/autocomplete_payload.json"
-        # Validate JSON
-        if ! echo "$payload" | jq . >/dev/null 2>&1; then
-            echo_error "Debug: Invalid JSON generated!"
-            echo "$payload" | jq . 2>&1 | head -5
-        fi
-    fi
-    
-    max_attempts=1  # Don't retry during tab completion
+    max_attempts=2
     attempt=1
     while [ $attempt -le $max_attempts ]; do
         if [[ "${(U)ACSH_PROVIDER}" == "ANTHROPIC" ]]; then
@@ -522,17 +390,8 @@ EOF
     done
 
     if [[ $status_code -ne 200 ]]; then
-        # Log error for debugging
-        echo "$(date): API Error $status_code for '$user_input'" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
-        echo "Response: $response_body" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
-        
         case $status_code in
-            400) 
-                echo_error "Bad Request: The API request was invalid or malformed."
-                if [[ -n "$DEBUG_AUTOCOMPLETE" ]]; then
-                    echo_error "Response: $response_body"
-                fi
-                ;;
+            400) echo_error "Bad Request: The API request was invalid or malformed." ;;
             401) echo_error "Unauthorized: The provided API key is invalid or missing." ;;
             429) echo_error "Too Many Requests: The API rate limit has been exceeded." ;;
             500) echo_error "Internal Server Error: An unexpected error occurred on the API server." ;;
@@ -541,35 +400,21 @@ EOF
         return
     fi
 
-    # Debug: log response
-    echo "$(date): Got response for '$user_input', provider: ${(U)ACSH_PROVIDER}" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
-    echo "Response body length: ${#response_body}" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
-    # Save full response for debugging
-    echo "$response_body" > "$HOME/.autocomplete/tmp/last_response.json"
-    
     if [[ "${(U)ACSH_PROVIDER}" == "ANTHROPIC" ]]; then
-        # Extract tool response
-        content=$(echo "$response_body" | jq -r '.content[0].input.commands' 2>/dev/null)
-        echo "Extracted Anthropic content: $content" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
+        content=$(echo "$response_body" | jq -r '.content[0].input.commands')
     elif [[ "${(U)ACSH_PROVIDER}" == "GROQ" ]]; then
-        content=$(echo "$response_body" | jq -r '.choices[0].message.content' 2>/dev/null)
-        content=$(echo "$content" | jq -r '.completions' 2>/dev/null)
+        content=$(echo "$response_body" | jq -r '.choices[0].message.content')
+        content=$(echo "$content" | jq -r '.completions')
     elif [[ "${(U)ACSH_PROVIDER}" == "OLLAMA" ]]; then
-        content=$(echo "$response_body" | jq -r '.message.content' 2>/dev/null)
-        content=$(echo "$content" | jq -r '.completions' 2>/dev/null)
+        content=$(echo "$response_body" | jq -r '.message.content')
+        content=$(echo "$content" | jq -r '.completions')
     else
-        content=$(echo "$response_body" | jq -r '.choices[0].message.tool_calls[0].function.arguments' 2>/dev/null)
-        content=$(echo "$content" | jq -r '.commands' 2>/dev/null)
+        content=$(echo "$response_body" | jq -r '.choices[0].message.tool_calls[0].function.arguments')
+        content=$(echo "$content" | jq -r '.commands')
     fi
 
     local completions
-    completions=$(echo "$content" | jq -r '.[]' 2>/dev/null | grep -v '^$' || echo "$content")
-    
-    # If jq failed, try to extract commands manually
-    if [[ -z "$completions" ]] && [[ -n "$content" ]]; then
-        completions="$content"
-    fi
-    
+    completions=$(echo "$content" | jq -r '.[]' | grep -v '^$')
     echo -n "$completions"
     log_request "$user_input" "$response_body"
 }
@@ -578,47 +423,46 @@ EOF
 #                        Completion Functions                                 #
 ###############################################################################
 
-list_cache() {
-    local cache_dir=${ACSH_CACHE_DIR:-"$HOME/.autocomplete/cache"}
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        # macOS
-        find "$cache_dir" -maxdepth 1 -type f -name "acsh-*" -exec stat -f "%m %N" {} \; | sort -n
+_get_default_completion_function() {
+    local cmd="$1"
+    complete -p "$cmd" 2>/dev/null | awk -F' ' '{ for(i=1;i<=NF;i++) { if ($i ~ /^-F$/) { print $(i+1); exit; } } }'
+}
+
+_default_completion() {
+    local current_word="" first_word="" default_func
+    if (( ${#COMP_WORDS[@]} )); then
+        first_word="${COMP_WORDS[1]}"
+        if (( $COMP_CWORD < ${#COMP_WORDS[@]} )); then
+            current_word="${COMP_WORDS[$((COMP_CWORD+1))]}"
+        fi
+    fi
+
+    default_func=$(_get_default_completion_function "$first_word")
+    if [[ -n "$default_func" ]]; then
+        "$default_func"
     else
-        # Linux
-        find "$cache_dir" -maxdepth 1 -type f -name "acsh-*" -printf '%T+ %p\n' | sort
+        local file_completions
+        if [[ -z "$current_word" ]]; then
+            file_completions=$(compgen -f -- || true)
+        else
+            file_completions=$(compgen -f -- "$current_word" || true)
+        fi
+        if [[ -n "$file_completions" ]]; then
+            COMPREPLY=("${(f)file_completions}")
+        fi
     fi
 }
 
+list_cache() {
+    local cache_dir=${ACSH_CACHE_DIR:-"$HOME/.autocomplete/cache"}
+    find "$cache_dir" -maxdepth 1 -type f -name "acsh-*" -printf '%T+ %p\n' | sort
+}
+
 _autocompletesh() {
-    local state line command current user_input completions user_input_hash
-    
-    # Prevent zsh from adding backslashes or modifying the buffer
-    setopt localoptions noshglob noksharrays
-    
-    # Check if we're already loading to prevent duplicate messages
-    if [[ -n "$ACSH_LOADING" ]]; then
-        return
-    fi
-    
-    # Get the current command line state from the original buffer
-    # Use LBUFFER (left of cursor) to avoid completion artifacts
-    user_input="${LBUFFER}"
-    command="${words[1]}"
-    current="${words[CURRENT]}"
-    
-    # Clean up any artifacts zsh might have added
-    user_input="${user_input%\\}"
-    user_input="${user_input% }"
-    
-    # Remove any parse error messages that got into the buffer
-    if [[ "$user_input" =~ "parse.*error:" ]]; then
-        # Extract just the original command before the error
-        user_input=$(echo "$user_input" | sed 's/parse.*error:.*//' | sed 's/[[:space:]]*$//')
-    fi
-    
-    # Don't try default completions - go straight to LLM
-    # This prevents directory listings from appearing
-    if true; then
+    _init_completion || return
+    _default_completion
+    if [[ ${#COMPREPLY[@]} -eq 0 && $COMP_TYPE -eq 63 ]]; then
+        local completions user_input user_input_hash
         acsh_load_config
         if [[ -z "$ACSH_ACTIVE_API_KEY" && ${(U)ACSH_PROVIDER} != "OLLAMA" ]]; then
             local provider_key="${ACSH_PROVIDER:-openai}_API_KEY"
@@ -627,37 +471,32 @@ _autocompletesh() {
             echo
             return
         fi
-        
+        if (( ${#COMP_WORDS[@]} )); then
+            command="${COMP_WORDS[1]}"
+            if (( COMP_CWORD < ${#COMP_WORDS[@]} )); then
+                current="${COMP_WORDS[$((COMP_CWORD+1))]}"
+            fi
+        fi
+        user_input="${COMP_LINE:-"$command $current"}"
         user_input_hash=$(echo -n "$user_input" | md5sum | cut -d ' ' -f 1)
-        
-        # Debug user input (disabled during completion to avoid output issues)
-        # if [[ -n "$DEBUG_AUTOCOMPLETE" ]]; then
-        #     echo_error "Debug: user_input='$user_input'"
-        #     echo_error "Debug: BUFFER='$BUFFER'"
-        # fi
         export ACSH_INPUT="$user_input"
         export ACSH_PROMPT=
         export ACSH_RESPONSE=
         local cache_dir=${ACSH_CACHE_DIR:-"$HOME/.autocomplete/cache"}
         local cache_size=${ACSH_CACHE_SIZE:-100}
         local cache_file="$cache_dir/acsh-$user_input_hash.txt"
-        
         if [[ -d "$cache_dir" && "$cache_size" -gt 0 && -f "$cache_file" ]]; then
             completions=$(cat "$cache_file" || true)
             touch "$cache_file"
         else
-            # Set loading flag
-            export ACSH_LOADING=1
-            
-            # Show simple loading message
-            printf '\rLoading completions...' >&2
-            
-            # Make API request
-            completions=$(openai_completion "$user_input" 2>/dev/null || true)
-            
-            # Clear loading message and flag
-            printf '\r                      \r' >&2
-            unset ACSH_LOADING
+            echo -en "\e]12;green\a"
+            completions=$(openai_completion "$user_input" || true)
+            if [[ -z "$completions" ]]; then
+                echo -en "\e]12;red\a"
+                sleep 1
+                completions=$(openai_completion "$user_input" || true)
+            fi
+            echo -en "\e]12;white\a"
             if [[ -d "$cache_dir" && "$cache_size" -gt 0 ]]; then
                 echo "$completions" > "$cache_file"
                 while [[ $(list_cache | wc -l) -gt "$cache_size" ]]; do
@@ -666,69 +505,20 @@ _autocompletesh() {
                 done
             fi
         fi
-        
         export ACSH_RESPONSE=$completions
-        
-        # Debug: show what we got
-        if [[ -n "$completions" ]]; then
-            echo "$(date): Got completions for '$user_input':" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
-            echo "$completions" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
-            echo "---" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
-        else
-            echo "$(date): No completions returned for '$user_input'" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
-        fi
-        
         if [[ -n "$completions" ]]; then
             local num_rows
             num_rows=$(echo "$completions" | wc -l)
-            local -a suggestions
-            
+            COMPREPLY=()
             if [[ $num_rows -eq 1 ]]; then
-                # Single completion - use compadd with -Q and -U to replace entire line
-                compadd -Q -U -- "$completions"
-                return
+                COMPREPLY=("${(f)$(echo -n "$completions" | sed "s/${command}[[:space:]]*//" | sed 's/:/\\:/g')}")
             else
-                # Multiple completions
-                local -a actual_commands
-                while IFS= read -r line; do
-                    if [[ -n "$line" ]]; then
-                        # If the completion doesn't start with the user input, prepend it
-                        if [[ "$line" != "$user_input"* ]]; then
-                            actual_commands+=("$user_input $line")
-                        else
-                            actual_commands+=("$line")
-                        fi
-                    fi
-                done <<< "$completions"
-                
-                # Clear the current word and offer completions that will replace the entire line
-                # Filter out any error messages
-                local -a filtered_commands
-                for cmd in "${actual_commands[@]}"; do
-                    if [[ ! "$cmd" =~ "error:" && ! "$cmd" =~ "parse.*error" && -n "$cmd" ]]; then
-                        filtered_commands+=("$cmd")
-                    fi
-                done
-                if [[ ${#filtered_commands[@]} -gt 0 ]]; then
-                    # Debug: log what we're adding
-                    echo "$(date): Adding completions:" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
-                    for cmd in "${filtered_commands[@]}"; do
-                        echo "  '$cmd'" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
-                    done
-                    # Clear the line and add completions
-                    # Use nospace to prevent adding space after completion
-                    compstate[insert]=menu
-                    compadd -S '' -U -- "${filtered_commands[@]}"
-                else
-                    # No valid completions after filtering, try showing original
-                    if [[ ${#actual_commands[@]} -gt 0 ]]; then
-                        compadd -Q -U -- "${actual_commands[@]}"
-                    else
-                        # No completions at all
-                        return 0
-                    fi
-                fi
+                completions=$(echo "$completions" | awk '{print NR". "$0}')
+                COMPREPLY=("${(f)completions}")
             fi
+        fi
+        if [[ ${#COMPREPLY[@]} -eq 0 ]]; then
+            COMPREPLY=("$current")
         fi
     fi
 }
@@ -926,10 +716,6 @@ acsh_load_config() {
             key=$(echo "$key" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
             value=$(echo "$value" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
             key=$(echo "$key" | tr '[:lower:]' '[:upper:]' | sed 's/[^A-Z0-9]/_/g')
-            # Evaluate environment variables in the value
-            if [[ $value == \$* ]]; then
-                value=$(eval echo "$value")
-            fi
             if [[ -n $value ]]; then
                 export "ACSH_$key"="$value"
             fi
@@ -1033,31 +819,28 @@ remove_command() {
 }
 
 check_if_enabled() {
-    # Check if _autocompletesh is registered as a completion function
-    if (( ${+_comps[*]} )); then
-        return 0
-    else
-        return 1
-    fi
+    local is_enabled
+    is_enabled=$(complete -p | grep _autocompletesh | grep -cv _autocompletesh_cli)
+    (( is_enabled > 0 )) && return 0 || return 1
 }
 
 _autocompletesh_cli() {
-    local state line current
-    current="${words[CURRENT]}"
-    
-    case "${words[2]}" in
-        config)
-            compadd set reset
-            ;;
-        command)
-            compadd -- --dry-run
-            ;;
-        *)
-            if [[ $CURRENT -eq 2 ]]; then
-                compadd install remove config enable disable clear usage system command model -- --help
-            fi
-            ;;
-    esac
+    if (( ${#COMP_WORDS[@]} )); then
+        command="${COMP_WORDS[1]}"
+        if (( COMP_CWORD < ${#COMP_WORDS[@]} )); then
+            current="${COMP_WORDS[$((COMP_CWORD+1))]}"
+        fi
+    fi
+    if [[ $current == "config" ]]; then
+        COMPREPLY=($'set\nreset')
+        return
+    elif [[ $current == "command" ]]; then
+        COMPREPLY=($'command --dry-run')
+        return
+    fi
+    if [[ -z "$current" ]]; then
+        COMPREPLY=($'install\nremove\nconfig\nenable\ndisable\nclear\nusage\nsystem\ncommand\nmodel\n--help')
+    fi
 }
 
 enable_command() {
@@ -1066,23 +849,12 @@ enable_command() {
         disable_command
     fi
     acsh_load_config
-    # Set up zsh completion for all commands
-    # The -P flag makes this the default for all commands
-    compdef _autocompletesh -P '*'
-    
-    # Configure zsh completion behavior
-    zstyle ':completion:*' file-patterns ''  # Disable file completion
-    zstyle ':completion:*' matcher-list ''   # Disable fuzzy matching
-    zstyle ':completion:*' menu no           # Disable menu selection
-    zstyle ':completion:*' insert-tab false  # Don't insert tab
+    complete -D -E -F _autocompletesh -o nospace
 }
 
 disable_command() {
     if check_if_enabled; then
-        # Remove the catch-all completion
-        compdef -d '*'
-        # Restore default file completion
-        zstyle -d ':completion:*' file-patterns
+        complete -F _completion_loader -D
     fi
 }
 
