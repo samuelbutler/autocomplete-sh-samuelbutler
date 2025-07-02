@@ -776,14 +776,9 @@ _autocompletesh() {
             # Set loading flag
             export ACSH_LOADING=1
             
-            # Show loading message on the next line
-            printf '\nLoading completions...' >&2
-            
-            # Make API request
+            # Make API request (no loading indicator during tab completion)
             completions=$(openai_completion "$user_input" 2>/dev/null || true)
             
-            # Clear loading message by moving up and clearing the line
-            printf '\033[1A\033[2K' >&2
             unset ACSH_LOADING
             if [[ -d "$cache_dir" && "$cache_size" -gt 0 ]]; then
                 echo "$completions" > "$cache_file"
