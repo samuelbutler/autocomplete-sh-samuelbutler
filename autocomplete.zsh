@@ -14,6 +14,9 @@
 # Make sure that the native zsh completion system is loaded
 if [[ -n $ZSH_VERSION ]]; then
     autoload -Uz compinit && compinit -u
+    # Enable menu selection for completions
+    zmodload zsh/complist
+    zstyle ':completion:*' menu select
 fi
 
 ###############################################################################
@@ -711,8 +714,10 @@ _autocompletesh() {
                     for cmd in "${filtered_commands[@]}"; do
                         echo "  '$cmd'" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
                     done
+                    # Force menu completion
+                    compstate[insert]=menu
                     # Add completions as continuations of the current word
-                    compadd -S ' ' -- "${filtered_commands[@]}"
+                    compadd -S ' ' -X 'brew commands:' -- "${filtered_commands[@]}"
                 else
                     # No valid completions after filtering, try showing original
                     if [[ ${#actual_commands[@]} -gt 0 ]]; then
