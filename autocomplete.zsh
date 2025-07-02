@@ -714,8 +714,11 @@ _autocompletesh() {
                     for cmd in "${filtered_commands[@]}"; do
                         echo "  '$cmd'" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
                     done
+                    # Clear the PREFIX to prevent duplication
+                    PREFIX=""
                     # Add completions that will replace the entire line
-                    compadd -U -- "${filtered_commands[@]}"
+                    # Use -Q to prevent backslash escaping of spaces
+                    compadd -Q -U -- "${filtered_commands[@]}"
                 else
                     # No valid completions after filtering, try showing original
                     if [[ ${#actual_commands[@]} -gt 0 ]]; then
