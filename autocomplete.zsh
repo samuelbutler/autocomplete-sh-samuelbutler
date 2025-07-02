@@ -695,8 +695,8 @@ _autocompletesh() {
                 local -a actual_commands
                 while IFS= read -r line; do
                     if [[ -n "$line" ]]; then
-                        # Just use the subcommands, not the full command
-                        actual_commands+=("$line")
+                        # Add the full command for proper menu display
+                        actual_commands+=("$user_input $line")
                     fi
                 done <<< "$completions"
                 
@@ -714,9 +714,8 @@ _autocompletesh() {
                     for cmd in "${filtered_commands[@]}"; do
                         echo "  '$cmd'" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
                     done
-                    # Add completions without forcing menu mode
-                    # Let zsh handle the display based on user's zstyle settings
-                    compadd -S ' ' -- "${filtered_commands[@]}"
+                    # Add completions that will replace the entire line
+                    compadd -U -- "${filtered_commands[@]}"
                 else
                     # No valid completions after filtering, try showing original
                     if [[ ${#actual_commands[@]} -gt 0 ]]; then
