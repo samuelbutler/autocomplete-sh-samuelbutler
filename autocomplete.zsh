@@ -254,7 +254,7 @@ $prompt"
     local base_payload
     base_payload=$(build_common_payload)
 
-    case "${ACSH_PROVIDER^^}" in
+    case "${(U)ACSH_PROVIDER}" in
         "ANTHROPIC")
             payload=$(echo "$base_payload" | jq '. + {
                 system: .messages[0].content,
@@ -328,7 +328,7 @@ log_request() {
     response_body="$2"
     user_input_hash=$(echo -n "$user_input" | md5sum | cut -d ' ' -f 1)
 
-    if [[ "${ACSH_PROVIDER^^}" == "ANTHROPIC" ]]; then
+    if [[ "${(U)ACSH_PROVIDER}" == "ANTHROPIC" ]]; then
         prompt_tokens=$(echo "$response_body" | jq -r '.usage.input_tokens')
         prompt_tokens_int=$((prompt_tokens))
         completion_tokens=$(echo "$response_body" | jq -r '.usage.output_tokens')
@@ -354,8 +354,8 @@ openai_completion() {
     default_user_input="Write two to six most likely commands given the provided information"
     user_input=${*:-$default_user_input}
 
-    if [[ -z "$ACSH_ACTIVE_API_KEY" && ${ACSH_PROVIDER^^} != "OLLAMA" ]]; then
-        echo_error "ACSH_ACTIVE_API_KEY not set. Please set it with: export ${ACSH_PROVIDER^^}_API_KEY=<your-api-key>"
+    if [[ -z "$ACSH_ACTIVE_API_KEY" && ${(U)ACSH_PROVIDER} != "OLLAMA" ]]; then
+        echo_error "ACSH_ACTIVE_API_KEY not set. Please set it with: export ${(U)ACSH_PROVIDER}_API_KEY=<your-api-key>"
         return
     fi
     api_key="${ACSH_ACTIVE_API_KEY:-$OPENAI_API_KEY}"
@@ -364,13 +364,13 @@ openai_completion() {
     max_attempts=2
     attempt=1
     while [ $attempt -le $max_attempts ]; do
-        if [[ "${ACSH_PROVIDER^^}" == "ANTHROPIC" ]]; then
+        if [[ "${(U)ACSH_PROVIDER}" == "ANTHROPIC" ]]; then
             response=$(curl -s -m "$timeout" -w "\n%{http_code}" "$endpoint" \
                 -H "content-type: application/json" \
                 -H "anthropic-version: 2023-06-01" \
                 -H "x-api-key: $api_key" \
                 --data "$payload")
-        elif [[ "${ACSH_PROVIDER^^}" == "OLLAMA" ]]; then
+        elif [[ "${(U)ACSH_PROVIDER}" == "OLLAMA" ]]; then
             response=$(curl -s -m "$timeout" -w "\n%{http_code}" "$endpoint" --data "$payload")
         else
             response=$(\curl -s -m "$timeout" -w "\n%{http_code}" "$endpoint" \
@@ -400,12 +400,12 @@ openai_completion() {
         return
     fi
 
-    if [[ "${ACSH_PROVIDER^^}" == "ANTHROPIC" ]]; then
+    if [[ "${(U)ACSH_PROVIDER}" == "ANTHROPIC" ]]; then
         content=$(echo "$response_body" | jq -r '.content[0].input.commands')
-    elif [[ "${ACSH_PROVIDER^^}" == "GROQ" ]]; then
+    elif [[ "${(U)ACSH_PROVIDER}" == "GROQ" ]]; then
         content=$(echo "$response_body" | jq -r '.choices[0].message.content')
         content=$(echo "$content" | jq -r '.completions')
-    elif [[ "${ACSH_PROVIDER^^}" == "OLLAMA" ]]; then
+    elif [[ "${(U)ACSH_PROVIDER}" == "OLLAMA" ]]; then
         content=$(echo "$response_body" | jq -r '.message.content')
         content=$(echo "$content" | jq -r '.completions')
     else
@@ -464,7 +464,7 @@ _autocompletesh() {
     if [[ ${#COMPREPLY[@]} -eq 0 && $COMP_TYPE -eq 63 ]]; then
         local completions user_input user_input_hash
         acsh_load_config
-        if [[ -z "$ACSH_ACTIVE_API_KEY" && ${ACSH_PROVIDER^^} != "OLLAMA" ]]; then
+        if [[ -z "$ACSH_ACTIVE_API_KEY" && ${(U)ACSH_PROVIDER} != "OLLAMA" ]]; then
             local provider_key="${ACSH_PROVIDER:-openai}_API_KEY"
             provider_key=$(echo "$provider_key" | tr '[:lower:]' '[:upper:]')
             echo_error "${provider_key} is not set. Please set it using: export ${provider_key}=<your-api-key> or disable autocomplete via: autocomplete disable"
@@ -629,7 +629,8 @@ show_config() {
 set_config() {
     local key="$1" value="$2" config_file="$HOME/.autocomplete/config"
     key=$(echo "$key" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-    key=$(echo "$key" | tr '[:lower:]' '[:upper:]' | sed 's/[^A-Z0-9]/_/g')
+    # Keep key in lowercase for config file
+    key=$(echo "$key" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g')
     if [ -z "$key" ]; then
         echo_error "SyntaxError: expected 'autocomplete config set <key> <value>'"
         return
@@ -638,7 +639,7 @@ set_config() {
         echo_error "Configuration file not found: $config_file. Run autocomplete install."
         return
     fi
-    sed -i "s|^\($key:\).*|\1 $value|" "$config_file"
+    sed -i '' "s|^\($key:\).*|\1 $value|" "$config_file"
     acsh_load_config
 }
 
@@ -929,14 +930,16 @@ usage_command() {
 ###############################################################################
 
 get_key() {
-    IFS= read -rsn1 key 2>/dev/null >&2
+    local key
+    IFS= read -rsk 1 key
     if [[ $key == $'\x1b' ]]; then
-        read -rsn2 key
-        if [[ $key == [A ]]; then echo up; fi
-        if [[ $key == [B ]]; then echo down; fi
-        if [[ $key == q ]]; then echo q; fi
+        read -rsk 2 key
+        if [[ $key == "[A" ]]; then echo up; fi
+        if [[ $key == "[B" ]]; then echo down; fi
     elif [[ $key == "q" ]]; then
         echo q
+    elif [[ $key == $'\n' || $key == $'\r' ]]; then
+        echo ""
     else
         echo "$key"
     fi
@@ -944,15 +947,29 @@ get_key() {
 
 menu_selector() {
     options=("$@")
-    selected=0
+    selected=1
     show_menu() {
         echo
         echo "Select a Language Model (Up/Down arrows, Enter to select, 'q' to quit):"
-        for i in "${!options[@]}"; do
+        local i display_option prev_provider=""
+        for (( i=1; i<=${#options[@]}; i++ )); do
+            display_option="${options[i]}"
+            # Extract provider name (part before colon+tab)
+            local current_provider="${display_option%%:*}"
+            
+            # Add empty line between different providers
+            if [[ -n "$prev_provider" && "$current_provider" != "$prev_provider" ]]; then
+                echo
+            fi
+            prev_provider="$current_provider"
+            
+            # Format: replace tab with space and ensure it's on one line
+            display_option="${display_option//	/: }"
+            
             if (( i == selected )); then
-                echo -e "\e[1;32m> ${options[i]}\e[0m"
+                echo -e "\e[1;32m> ${display_option}\e[0m"
             else
-                echo "  ${options[i]}"
+                echo "  ${display_option}"
             fi
         done
     }
@@ -964,14 +981,14 @@ menu_selector() {
         case $key in
             up)
                 ((selected--))
-                if (( selected < 0 )); then
-                    selected=$((${#options[@]} - 1))
+                if (( selected < 1 )); then
+                    selected=${#options[@]}
                 fi
                 ;;
             down)
                 ((selected++))
-                if (( selected >= ${#options[@]} )); then
-                    selected=0
+                if (( selected > ${#options[@]} )); then
+                    selected=1
                 fi
                 ;;
             q)
@@ -993,9 +1010,14 @@ model_command() {
     if [[ $# -ne 3 ]]; then
         # In zsh, use a simple for-loop to build an array of sorted keys.
         local sorted_keys
-        sorted_keys=($(for key in ${(k)_autocomplete_modellist}; do echo "$key"; done | sort))
-        for key in "${sorted_keys[@]}"; do
-            options+=("$key")
+        sorted_keys=()
+        for key in ${(k)_autocomplete_modellist}; do
+            sorted_keys+=($key)  # No quotes to avoid double quoting
+        done
+        # Sort the array
+        sorted_keys=(${(o)sorted_keys[@]})
+        for key in ${sorted_keys[@]}; do
+            options+=($key)  # No quotes to avoid double quoting
         done
         echo -e "\e[1;32mAutocomplete.zsh - Model Configuration\e[0m"
         menu_selector "${options[@]}"
@@ -1021,23 +1043,27 @@ model_command() {
     completion_cost=$(echo "$selected_value" | jq -r '.completion_cost' | awk '{printf "%.8f", $1}')
     set_config "api_prompt_cost" "$prompt_cost"
     set_config "api_completion_cost" "$completion_cost"
-    if [[ -z "$ACSH_ACTIVE_API_KEY" && ${ACSH_PROVIDER^^} != "OLLAMA" ]]; then
-        echo -e "\e[34mSet ${ACSH_PROVIDER^^}_API_KEY\e[0m"
+    
+    # Reload config to update environment variables
+    acsh_load_config
+    
+    if [[ -z "$ACSH_ACTIVE_API_KEY" && ${(U)ACSH_PROVIDER} != "OLLAMA" ]]; then
+        echo -e "\e[34mSet ${(U)ACSH_PROVIDER}_API_KEY\e[0m"
         echo "Stored in ~/.autocomplete/config"
-        if [[ ${ACSH_PROVIDER^^} == "OPENAI" ]]; then
+        if [[ ${(U)ACSH_PROVIDER} == "OPENAI" ]]; then
             echo "Create a new one: https://platform.openai.com/settings/profile?tab=api-keys"
-        elif [[ ${ACSH_PROVIDER^^} == "ANTHROPIC" ]]; then
+        elif [[ ${(U)ACSH_PROVIDER} == "ANTHROPIC" ]]; then
             echo "Create a new one: https://console.anthropic.com/settings/keys"
-        elif [[ ${ACSH_PROVIDER^^} == "GROQ" ]]; then
+        elif [[ ${(U)ACSH_PROVIDER} == "GROQ" ]]; then
             echo "Create a new one: https://console.groq.com/keys"
         fi
-        print -n "Enter your ${ACSH_PROVIDER^^} API Key: "
+        print -n "Enter your ${(U)ACSH_PROVIDER} API Key: "
         read -sr user_api_key_input < /dev/tty
         clear
         echo -e "\e[1;32mAutocomplete.zsh - Model Configuration\e[0m"
         if [[ -n "$user_api_key_input" ]]; then
             export ACSH_ACTIVE_API_KEY="$user_api_key_input"
-            set_config "${ACSH_PROVIDER,,}_api_key" "$user_api_key_input"
+            set_config "${(L)ACSH_PROVIDER}_api_key" "$user_api_key_input"
         fi
     fi
     model="${ACSH_MODEL:-ERROR}"
@@ -1050,7 +1076,7 @@ model_command() {
     echo -e "Endpoint:\t\e[90m$ACSH_ENDPOINT\e[0m"
     echo -n "API Key:"
     if [[ -z $ACSH_ACTIVE_API_KEY ]]; then
-        if [[ ${ACSH_PROVIDER^^} == "OLLAMA" ]]; then
+        if [[ ${(U)ACSH_PROVIDER} == "OLLAMA" ]]; then
             echo -e "\t\e[90mNot Used\e[0m"
         else
             echo -e "\t\e[31mUNSET\e[0m"
@@ -1060,12 +1086,12 @@ model_command() {
         config_value="${ACSH_ACTIVE_API_KEY:0:4}...${rest: -4}"
         echo -e "\t\e[32m$config_value\e[0m"
     fi
-    if [[ -z $ACSH_ACTIVE_API_KEY && ${ACSH_PROVIDER^^} != "OLLAMA" ]]; then
+    if [[ -z $ACSH_ACTIVE_API_KEY && ${(U)ACSH_PROVIDER} != "OLLAMA" ]]; then
         echo "To set the API Key, run:"
         echo -e "\t\e[31mautocomplete config set api_key <your-api-key>\e[0m"
-        echo -e "\t\e[31mexport ${ACSH_PROVIDER^^}_API_KEY=<your-api-key>\e[0m"
+        echo -e "\t\e[31mexport ${(U)ACSH_PROVIDER}_API_KEY=<your-api-key>\e[0m"
     fi
-    if [[ ${ACSH_PROVIDER^^} == "OLLAMA" ]]; then
+    if [[ ${(U)ACSH_PROVIDER} == "OLLAMA" ]]; then
         echo "To set a custom endpoint:"
         echo -e "\t\e[34mautocomplete config set endpoint <your-url>\e[0m"
         echo "Other models can be set with:"
