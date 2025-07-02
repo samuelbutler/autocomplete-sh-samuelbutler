@@ -779,19 +779,17 @@ _autocompletesh() {
             # Disable job control messages temporarily
             setopt local_options no_monitor
             
-            # Save cursor position and show spinner on next line
-            printf '\033[s\n' >&2  # Save cursor position and add newline
-            
-            # Show spinner animation
+            # Show spinner animation inline (after the prompt)
             {
                 local spinner=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
                 local i=0
+                printf '  ' >&2  # Add space after prompt
                 while [[ -n "$ACSH_LOADING" ]]; do
-                    printf '\r%s Loading completions...' "${spinner[$((i % 10))]}" >&2
+                    printf '\b%s' "${spinner[$((i % 10))]}" >&2
                     ((i++))
                     sleep 0.1
                 done
-                printf '\r\033[K' >&2  # Clear the line
+                printf '\b \b' >&2  # Clear spinner completely
             } 2>&1 &
             local spinner_pid=$!
             
@@ -801,9 +799,6 @@ _autocompletesh() {
             # Stop spinner
             unset ACSH_LOADING
             { kill $spinner_pid; wait $spinner_pid; } 2>/dev/null
-            
-            # Restore cursor position (back to saved position)
-            printf '\033[u' >&2
             if [[ -d "$cache_dir" && "$cache_size" -gt 0 ]]; then
                 echo "$completions" > "$cache_file"
                 while [[ $(list_cache | wc -l) -gt "$cache_size" ]]; do
@@ -830,10 +825,15 @@ _autocompletesh() {
             local -a suggestions
             
             if [[ $num_rows -eq 1 ]]; then
-                # Single completion - clear prefix to prevent duplication
-                PREFIX=""
-                SUFFIX=""
-                compadd -Q -- "$completions"
+                # Single completion - handle properly
+                # Strip the command prefix if present to avoid duplication
+                local single_completion="$completions"
+                if [[ "$single_completion" == "$user_input "* ]]; then
+                    single_completion="${single_completion#$user_input }"
+                fi
+                # Remove angle bracket placeholders
+                single_completion=$(echo "$single_completion" | sed 's/ <[^>]*>//g')
+                compadd -l -S ' ' -- "$single_completion"
                 return
             else
                 # Multiple completions
@@ -872,15 +872,9 @@ _autocompletesh() {
                     for cmd in "${filtered_commands[@]}"; do
                         echo "  '$cmd'" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
                     done
-                    # Add completions for the current word position
-                    # Let zsh handle the display properly
-                    if [[ "$user_input" == *" " ]]; then
-                        # User typed "brew " with space, add as new words
-                        compadd -- "${filtered_commands[@]}"
-                    else
-                        # User typed "brew" without space, add as continuations
-                        compadd -S ' ' -- "${filtered_commands[@]}"
-                    fi
+                    # Add completions
+                    # Use standard completion without -l flag
+                    compadd -S ' ' -- "${filtered_commands[@]}"
                 else
                     # No valid completions after filtering, try showing original
                     if [[ ${#actual_commands[@]} -gt 0 ]]; then
