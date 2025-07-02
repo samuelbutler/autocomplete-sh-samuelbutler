@@ -779,21 +779,40 @@ _autocompletesh() {
             # Disable job control messages temporarily
             setopt local_options no_monitor
             
-            # Show spinner with absolute positioning
+            # Show spinner with positioning based on visible text
             {
                 local spinner=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
                 local i=0
-                # Get current cursor column position
-                local col=$((${#user_input} + 3))  # Command length + prompt + spaces
-                # Add spaces for spinner
+                
+                # Get the visible prompt length by stripping ANSI codes
+                local visible_prompt="${PS1:-}"
+                if [[ -n "$PROMPT" ]]; then
+                    visible_prompt="$PROMPT"
+                fi
+                # Strip ANSI escape sequences to get visible length
+                local prompt_stripped=$(echo -n "$visible_prompt" | sed 's/\x1b\[[0-9;]*m//g' | sed 's/\x1b\[[0-9;]*[a-zA-Z]//g')
+                local prompt_len=${#prompt_stripped}
+                
+                # If we still can't get a good length, use the known visible chars
+                if [[ $prompt_len -eq 0 ]] || [[ $prompt_len -gt 20 ]]; then
+                    # "➜  ~ " is 6 visible characters
+                    prompt_len=6
+                fi
+                
+                # Calculate spinner position
+                local cmd_len=${#user_input}
+                local spinner_col=$((prompt_len + cmd_len + 2))
+                
+                # Print spaces for spinner
                 printf '  ' >&2
+                
                 while [[ -n "$ACSH_LOADING" ]]; do
-                    # Move to absolute column position and print spinner
-                    printf '\r\033[%dC%s' "$col" "${spinner[$((i++ % 10))]}" >&2
+                    # Move to absolute column and print spinner
+                    printf '\r\033[%dC%s' "$((spinner_col - 1))" "${spinner[$((i++ % 10))]}" >&2
                     sleep 0.1
                 done
                 # Clear spinner
-                printf '\r\033[%dC ' "$col" >&2
+                printf '\r\033[%dC ' "$((spinner_col - 1))" >&2
             } 2>&1 &
             local spinner_pid=$!
             
