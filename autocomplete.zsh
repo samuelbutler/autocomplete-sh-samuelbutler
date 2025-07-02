@@ -779,26 +779,14 @@ _autocompletesh() {
             # Disable job control messages temporarily
             setopt local_options no_monitor
             
-            # Show spinner animation inline (after the prompt)
-            {
-                local spinner=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
-                local i=0
-                printf '  ' >&2  # Add space after prompt
-                while [[ -n "$ACSH_LOADING" ]]; do
-                    printf '\b%s' "${spinner[$((i % 10))]}" >&2
-                    ((i++))
-                    sleep 0.1
-                done
-                printf '\b \b' >&2  # Clear spinner completely
-            } 2>&1 &
-            local spinner_pid=$!
+            # Spinner disabled for now to avoid display issues
+            # Will be re-enabled once completion display is fixed
             
             # Make API request
             completions=$(openai_completion "$user_input" 2>/dev/null || true)
             
             # Stop spinner
             unset ACSH_LOADING
-            { kill $spinner_pid; wait $spinner_pid; } 2>/dev/null
             if [[ -d "$cache_dir" && "$cache_size" -gt 0 ]]; then
                 echo "$completions" > "$cache_file"
                 while [[ $(list_cache | wc -l) -gt "$cache_size" ]]; do
@@ -831,9 +819,9 @@ _autocompletesh() {
                 if [[ "$single_completion" == "$user_input "* ]]; then
                     single_completion="${single_completion#$user_input }"
                 fi
-                # Remove angle bracket placeholders
-                single_completion=$(echo "$single_completion" | sed 's/ <[^>]*>//g')
-                compadd -l -S ' ' -- "$single_completion"
+                # Remove angle bracket and square bracket placeholders
+                single_completion=$(echo "$single_completion" | sed 's/ <[^>]*>//g' | sed 's/ \[[^]]*\]//g')
+                compadd -S ' ' -- "$single_completion"
                 return
             else
                 # Multiple completions
@@ -843,8 +831,8 @@ _autocompletesh() {
                         # Strip any comments or descriptions after # or multiple spaces first
                         line=$(echo "$line" | sed 's/  *#.*//' | sed 's/  \+.*//' | sed 's/[[:space:]]*$//')
                         
-                        # Remove angle brackets placeholders like <formula>, <package>, etc.
-                        line=$(echo "$line" | sed 's/ <[^>]*>//g')
+                        # Remove angle brackets and square brackets placeholders like <formula>, [package], etc.
+                        line=$(echo "$line" | sed 's/ <[^>]*>//g' | sed 's/ \[[^]]*\]//g')
                         
                         # Check if this is a complete command that already includes the base command
                         if [[ "$line" == "$user_input "* ]]; then
@@ -873,7 +861,8 @@ _autocompletesh() {
                         echo "  '$cmd'" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
                     done
                     # Add completions
-                    # Use standard completion without -l flag
+                    # Clear the current prefix to prevent concatenation
+                    PREFIX=""
                     compadd -S ' ' -- "${filtered_commands[@]}"
                 else
                     # No valid completions after filtering, try showing original
