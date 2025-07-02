@@ -779,14 +779,27 @@ _autocompletesh() {
             # Disable job control messages temporarily
             setopt local_options no_monitor
             
-            # Spinner disabled for now to avoid display issues
-            # Will be re-enabled once completion display is fixed
+            # Show minimal spinner inline
+            {
+                local spinner=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+                local i=0
+                # Just add a space and show spinner
+                printf ' ' >&2
+                while [[ -n "$ACSH_LOADING" ]]; do
+                    printf '\b%s' "${spinner[$((i++ % 10))]}" >&2
+                    sleep 0.1
+                done
+                # Clear the spinner
+                printf '\b ' >&2
+            } 2>/dev/null &
+            local spinner_pid=$!
             
             # Make API request
             completions=$(openai_completion "$user_input" 2>/dev/null || true)
             
             # Stop spinner
             unset ACSH_LOADING
+            { kill $spinner_pid; wait $spinner_pid; } 2>/dev/null
             if [[ -d "$cache_dir" && "$cache_size" -gt 0 ]]; then
                 echo "$completions" > "$cache_file"
                 while [[ $(list_cache | wc -l) -gt "$cache_size" ]]; do
