@@ -692,12 +692,8 @@ _autocompletesh() {
                 local -a actual_commands
                 while IFS= read -r line; do
                     if [[ -n "$line" ]]; then
-                        # If the completion doesn't start with the user input, prepend it
-                        if [[ "$line" != "$user_input"* ]]; then
-                            actual_commands+=("$user_input $line")
-                        else
-                            actual_commands+=("$line")
-                        fi
+                        # Just use the subcommands, not the full command
+                        actual_commands+=("$line")
                     fi
                 done <<< "$completions"
                 
@@ -715,10 +711,8 @@ _autocompletesh() {
                     for cmd in "${filtered_commands[@]}"; do
                         echo "  '$cmd'" >> "$HOME/.autocomplete/tmp/debug_completions.txt"
                     done
-                    # Clear the line and add completions
-                    # Use nospace to prevent adding space after completion
-                    compstate[insert]=menu
-                    compadd -S '' -U -- "${filtered_commands[@]}"
+                    # Add completions as continuations of the current word
+                    compadd -S ' ' -- "${filtered_commands[@]}"
                 else
                     # No valid completions after filtering, try showing original
                     if [[ ${#actual_commands[@]} -gt 0 ]]; then
