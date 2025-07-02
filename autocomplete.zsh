@@ -776,10 +776,34 @@ _autocompletesh() {
             # Set loading flag
             export ACSH_LOADING=1
             
-            # Make API request (no loading indicator during tab completion)
+            # Disable job control messages temporarily
+            setopt local_options no_monitor
+            
+            # Save cursor position and show spinner on next line
+            printf '\033[s\n' >&2  # Save cursor position and add newline
+            
+            # Show spinner animation
+            {
+                local spinner=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+                local i=0
+                while [[ -n "$ACSH_LOADING" ]]; do
+                    printf '\r%s Loading completions...' "${spinner[$((i % 10))]}" >&2
+                    ((i++))
+                    sleep 0.1
+                done
+                printf '\r\033[K' >&2  # Clear the line
+            } 2>&1 &
+            local spinner_pid=$!
+            
+            # Make API request
             completions=$(openai_completion "$user_input" 2>/dev/null || true)
             
+            # Stop spinner
             unset ACSH_LOADING
+            { kill $spinner_pid; wait $spinner_pid; } 2>/dev/null
+            
+            # Restore cursor position (back to saved position)
+            printf '\033[u' >&2
             if [[ -d "$cache_dir" && "$cache_size" -gt 0 ]]; then
                 echo "$completions" > "$cache_file"
                 while [[ $(list_cache | wc -l) -gt "$cache_size" ]]; do
